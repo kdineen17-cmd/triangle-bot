@@ -1,20 +1,19 @@
 name: Daily Triangle Headlines
 
-# ← Add this block to silence the Node.js 20 warning
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true   # This silences the warning immediately
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:        # Allows manual run
   schedule:
-    - cron: '0 13 * * *'
+    - cron: '0 13 * * *'    # Daily at 1 PM UTC
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4   # v4 is still fine and now supports Node 24
 
       - name: Set up Python
         uses: actions/setup-python@v5
