@@ -1,10 +1,10 @@
 name: Daily Triangle Headlines
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true   # This silences the warning immediately
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true   # Helps silence the warning
 
 on:
-  workflow_dispatch:        # Allows manual run
+  workflow_dispatch:
   schedule:
     - cron: '0 13 * * *'    # Daily at 1 PM UTC
 
@@ -13,10 +13,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4   # v4 is still fine and now supports Node 24
+        uses: actions/checkout@v6     # ← Updated to v6
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6   # ← Updated to v6
         with:
           python-version: '3.12'
 
