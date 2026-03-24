@@ -1,19 +1,19 @@
 name: Daily Triangle Headlines
 
 on:
-  workflow_dispatch:        # Allows manual "Run workflow" button
+  workflow_dispatch:        # Allows you to run it manually
   schedule:
-    - cron: '0 13 * * *'    # Daily at 1 PM UTC
+    - cron: '0 13 * * *'    # Runs daily at 1 PM UTC
 
 jobs:
-  post-headlines:
+  run-bot:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v5   # v5 is still the latest stable as of March 2026
         with:
           python-version: '3.12'
 
