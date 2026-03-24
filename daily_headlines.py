@@ -4,7 +4,7 @@ from datetime import datetime
 # ====================== CONFIG ======================
 NEWSAPI_KEY = "YOUR_NEWSAPI_KEY_HERE"
 GROQ_API_KEY = "YOUR_GROQ_API_KEY_HERE"
-SHOPIFY_STORE = "triangleshirt.myshopify.com"
+SHOPIFY_STORE = "d2yh7u-iq.myshopify.com"
 CLIENT_ID = "YOUR_CLIENT_ID_HERE"
 CLIENT_SECRET = "YOUR_CLIENT_SECRET_HERE"
 BLOG_ID = 81504043066   # ← CHANGE TO YOUR REAL BLOG ID
