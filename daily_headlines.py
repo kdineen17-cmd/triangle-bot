@@ -1,16 +1,21 @@
 import requests
+import os
 from datetime import datetime
 
-# ====================== CONFIG ======================
-NEWSAPI_KEY = "YOUR_NEWSAPI_KEY_HERE"
-GROQ_API_KEY = "YOUR_GROQ_API_KEY_HERE"
-SHOPIFY_STORE = "d2yh7u-iq.myshopify.com"
-CLIENT_ID = "YOUR_CLIENT_ID_HERE"
-CLIENT_SECRET = "YOUR_CLIENT_SECRET_HERE"
-BLOG_ID = 81504043066   # ← CHANGE TO YOUR REAL BLOG ID
-# ===================================================
+# ====================== CONFIG (from GitHub Secrets) ======================
+NEWSAPI_KEY = os.getenv("NEWSAPI_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+CLIENT_ID = os.getenv("CLIENT_ID")
+CLIENT_SECRET = os.getenv("CLIENT_SECRET")
+SHOPIFY_STORE = os.getenv("SHOPIFY_STORE")
+BLOG_ID = os.getenv("BLOG_ID")
 
-print("Starting Daily Triangle Headlines Bot...")
+# Basic check if secrets are loaded
+if not all([NEWSAPI_KEY, GROQ_API_KEY, CLIENT_ID, CLIENT_SECRET, SHOPIFY_STORE, BLOG_ID]):
+    print("❌ ERROR: Missing secrets! Check GitHub Secrets.")
+    exit(1)
+
+print("Starting Daily Triangle Emporium Headlines Bot...")
 
 # 1. Get Shopify access token
 print("Getting Shopify access token...")
@@ -35,8 +40,9 @@ news_response = requests.get("https://newsapi.org/v2/top-headlines", params={
 })
 articles = news_response.json()["articles"][:5]
 
-# 3. Build prompt with your Triangle tone
+# 3. Build prompt with Triangle Emporium tone
 headlines_text = "\n".join([f"- {a['title']} ({a['source']['name']})" for a in articles])
+
 prompt = f"""
 You are the official voice of Triangle Emporium and the Triangle Method.
 Tone: motivational but grounded, structured like the Triangle Method (Clarity → Creativity → Accountability), witty with light triangle metaphors, concise, actionable.
@@ -56,6 +62,7 @@ Format:
 Headlines:
 {headlines_text}
 """
+
 # 4. Call Groq AI
 print("Rewriting with AI...")
 ai_response = requests.post(
@@ -82,6 +89,6 @@ result = requests.post(
 )
 
 if result.status_code in (201, 200):
-    print("✅ SUCCESS! New blog post published to triangleshirt.com")
+    print("✅ SUCCESS! New blog post published to Triangle Emporium")
 else:
-    print("❌ Error:", result.status_code, result.text)
+    print("❌ Error publishing:", result.status_code, result.text)
