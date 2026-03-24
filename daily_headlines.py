@@ -37,9 +37,8 @@ articles = news_response.json()["articles"][:5]
 
 # 3. Build prompt with your Triangle tone
 headlines_text = "\n".join([f"- {a['title']} ({a['source']['name']})" for a in articles])
-
 prompt = f"""
-You are the official voice of **Triangle Emporium** and the Triangle Method.
+You are the official voice of Triangle Emporium and the Triangle Method.
 Tone: motivational but grounded, structured like the Triangle Method (Clarity → Creativity → Accountability), witty with light triangle metaphors, concise, actionable.
 Always end with a small reflection question or worksheet nudge.
 
@@ -49,7 +48,7 @@ Rewrite these 5 headlines into ONE engaging daily blog post titled:
 "Daily Triangle Headlines – {datetime.now().strftime('%B %d, %Y')}"
 
 Format:
-- Catchy intro paragraph that welcomes readers to Triangle Emporium
+- Catchy intro paragraph welcoming readers to Triangle Emporium
 - Then 5 short sections (one per headline) with the rewritten title as H2
 - Each section 2-3 sentences in Triangle tone
 - End with a Triangle reflection question + CTA to shop at triangleshirt.com
@@ -57,7 +56,6 @@ Format:
 Headlines:
 {headlines_text}
 """
-
 # 4. Call Groq AI
 print("Rewriting with AI...")
 ai_response = requests.post(
