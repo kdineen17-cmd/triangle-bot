@@ -2,23 +2,20 @@ name: Daily Triangle Headlines
 
 on:
   schedule:
-    - cron: '0 13 * * *'     # Runs every day at 1:00 PM UTC (9 AM EST / 6 AM PST)
-  workflow_dispatch:         # Allows you to run it manually for testing
+    - cron: '0 13 * * *'
+  workflow_dispatch:
 
 jobs:
   post-headlines:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name: Run Daily Headlines Bot
+      - name: Run bot
         env:
           NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
