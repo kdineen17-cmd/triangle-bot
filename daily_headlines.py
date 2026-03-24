@@ -7,7 +7,7 @@ GROQ_API_KEY = "YOUR_GROQ_API_KEY_HERE"
 SHOPIFY_STORE = "triangleshirt.myshopify.com"
 CLIENT_ID = "YOUR_CLIENT_ID_HERE"
 CLIENT_SECRET = "YOUR_CLIENT_SECRET_HERE"
-BLOG_ID = 123456789   # ← CHANGE TO YOUR REAL BLOG ID
+BLOG_ID = 81504043066   # ← CHANGE TO YOUR REAL BLOG ID
 # ===================================================
 
 print("Starting Daily Triangle Headlines Bot...")
