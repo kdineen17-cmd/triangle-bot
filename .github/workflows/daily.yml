@@ -1,9 +1,13 @@
 name: Daily Triangle Headlines
 
+# ← Add this block to silence the Node.js 20 warning
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
-  workflow_dispatch:        # Allows you to run it manually
+  workflow_dispatch:
   schedule:
-    - cron: '0 13 * * *'    # Runs daily at 1 PM UTC
+    - cron: '0 13 * * *'
 
 jobs:
   run-bot:
@@ -13,7 +17,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5   # v5 is still the latest stable as of March 2026
+        uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
