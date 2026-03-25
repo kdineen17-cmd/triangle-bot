@@ -59,7 +59,7 @@ What Triangle are you focusing on today? Clarity, Creativity, or Accountability?
 Shop the latest at triangleshirt.com
 """
 
-# 3. Generate content with Groq - with better error handling
+# 3. Generate content with Groq (using current model)
 print("Rewriting with AI...")
 groq_response = requests.post(
     "https://api.groq.com/openai/v1/chat/completions",
@@ -68,27 +68,20 @@ groq_response = requests.post(
         "Content-Type": "application/json"
     },
     json={
-        "model": "llama3-70b-8192",
+        "model": "llama-3.3-70b-versatile",   # ← Updated working model
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.7,
-        "max_tokens": 1500
+        "max_tokens": 2000
     }
 )
 
 print("Groq Status Code:", groq_response.status_code)
-print("Groq Response:", groq_response.text[:500] + "..." if len(groq_response.text) > 500 else groq_response.text)
 
 if groq_response.status_code != 200:
-    print("❌ Groq API Error - Check your GROQ_API_KEY")
+    print("❌ Groq API Error:", groq_response.text)
     exit(1)
 
 ai_response = groq_response.json()
-
-# Safe extraction
-if "choices" not in ai_response or not ai_response["choices"]:
-    print("❌ No choices in Groq response")
-    exit(1)
-
 content = ai_response["choices"][0]["message"]["content"]
 
 # 4. Update Google Doc
@@ -108,5 +101,5 @@ requests_list = [
 service.documents().batchUpdate(documentId=GOOGLE_DOC_ID, body={'requests': requests_list}).execute()
 
 print("✅ Google Doc updated successfully!")
-print("\n📄 Your Daily Triangle Headlines are ready here:")
+print(f"\n📄 View your Daily Triangle Headlines here:")
 print(f"https://docs.google.com/document/d/{GOOGLE_DOC_ID}/edit")
