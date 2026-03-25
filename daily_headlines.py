@@ -1,36 +1,19 @@
 import requests
 import os
+import json
 from datetime import datetime
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
 
-# ====================== CONFIG (from GitHub Secrets) ======================
+# ====================== CONFIG ======================
 NEWSAPI_KEY = os.getenv("NEWSAPI_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-CLIENT_ID = os.getenv("CLIENT_ID")
-CLIENT_SECRET = os.getenv("CLIENT_SECRET")
-SHOPIFY_STORE = os.getenv("SHOPIFY_STORE")
-BLOG_ID = os.getenv("BLOG_ID")
-
-# Basic check if secrets are loaded
-if not all([NEWSAPI_KEY, GROQ_API_KEY, CLIENT_ID, CLIENT_SECRET, SHOPIFY_STORE, BLOG_ID]):
-    print("❌ ERROR: Missing secrets! Check GitHub Secrets.")
-    exit(1)
+GOOGLE_SERVICE_ACCOUNT_JSON = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
+GOOGLE_DOC_ID = os.getenv("GOOGLE_DOC_ID")
 
 print("Starting Daily Triangle Emporium Headlines Bot...")
 
-# 1. Get Shopify access token
-print("Getting Shopify access token...")
-token_url = f"https://{SHOPIFY_STORE}/admin/oauth/access_token"
-token_data = {
-    "grant_type": "client_credentials",
-    "client_id": CLIENT_ID,
-    "client_secret": CLIENT_SECRET
-}
-token_response = requests.post(token_url, data=token_data)
-token_response.raise_for_status()
-access_token = token_response.json()["access_token"]
-print("✅ Access token obtained")
-
-# 2. Fetch headlines
+# 1. Fetch headlines
 print("Fetching headlines...")
 news_response = requests.get("https://newsapi.org/v2/top-headlines", params={
     "country": "us",
@@ -38,9 +21,9 @@ news_response = requests.get("https://newsapi.org/v2/top-headlines", params={
     "pageSize": 8,
     "apiKey": NEWSAPI_KEY
 })
-articles = news_response.json()["articles"][:5]
+articles = news_response.json()["articles"][:6]
 
-# 3. Build prompt with Triangle Emporium tone
+# 2. Build prompt with your Triangle tone
 headlines_text = "\n".join([f"- {a['title']} ({a['source']['name']})" for a in articles])
 
 prompt = f"""
@@ -50,20 +33,29 @@ Always end with a small reflection question or worksheet nudge.
 
 Today's date is {datetime.now().strftime('%B %d, %Y')}.
 
-Rewrite these 5 headlines into ONE engaging daily blog post titled:
-"Daily Triangle Headlines – {datetime.now().strftime('%B %d, %Y')}"
+Create a clean, well-formatted daily post with these 6 headlines.
 
-Format:
-- Catchy intro paragraph welcoming readers to Triangle Emporium
-- Then 5 short sections (one per headline) with the rewritten title as H2
-- Each section 2-3 sentences in Triangle tone
-- End with a Triangle reflection question + CTA to shop at triangleshirt.com
+Format exactly like this:
 
-Headlines:
-{headlines_text}
+**Daily Triangle Headlines – {datetime.now().strftime('%B %d, %Y')}**
+
+[Short welcoming intro paragraph]
+
+### Headline 1
+[Rewritten story in Triangle tone - 2-4 sentences]
+
+### Headline 2
+[Rewritten story...]
+
+... (do all 6)
+
+At the very end add:
+---
+What Triangle are you focusing on today? Clarity, Creativity, or Accountability?
+Shop the latest at triangleshirt.com
 """
 
-# 4. Call Groq AI
+# 3. Generate content with Groq
 print("Rewriting with AI...")
 ai_response = requests.post(
     "https://api.groq.com/openai/v1/chat/completions",
@@ -71,24 +63,27 @@ ai_response = requests.post(
     json={"model": "llama3-70b-8192", "messages": [{"role": "user", "content": prompt}], "temperature": 0.7}
 ).json()
 
-blog_body = ai_response["choices"][0]["message"]["content"]
+content = ai_response["choices"][0]["message"]["content"]
 
-# 5. Publish to Shopify
-print("Publishing to Shopify...")
-result = requests.post(
-    f"https://{SHOPIFY_STORE}/admin/api/2026-01/blogs/{BLOG_ID}/articles.json",
-    headers={"X-Shopify-Access-Token": access_token, "Content-Type": "application/json"},
-    json={
-        "article": {
-            "title": f"Daily Triangle Headlines – {datetime.now().strftime('%B %d, %Y')}",
-            "body_html": blog_body,
-            "tags": "daily-headlines,ai-news,triangle-method",
-            "published": True
-        }
-    }
-)
+# 4. Update Google Doc
+print("Updating Google Doc...")
+credentials_info = json.loads(GOOGLE_SERVICE_ACCOUNT_JSON)
+credentials = service_account.Credentials.from_service_account_info(credentials_info, scopes=['https://www.googleapis.com/auth/documents'])
+service = build('docs', 'v1', credentials=credentials)
 
-if result.status_code in (201, 200):
-    print("✅ SUCCESS! New blog post published to Triangle Emporium")
-else:
-    print("❌ Error publishing:", result.status_code, result.text)
+# Clear the document and insert new content
+requests_list = [
+    {'deleteContentRange': {'range': {'startIndex': 1, 'endIndex': 999999}}},
+    {'insertText': {'location': {'index': 1}, 'text': content}}
+]
+
+service.documents().batchUpdate(documentId=GOOGLE_DOC_ID, body={'requests': requests_list}).execute()
+
+print("✅ Google Doc updated successfully")
+
+# 5. Print summary for email
+print("\n" + "="*50)
+print("DAILY TRIANGLE HEADLINES READY")
+print("="*50)
+print(content)
+print("\nGoogle Doc: https://docs.google.com/document/d/" + GOOGLE_DOC_ID)
