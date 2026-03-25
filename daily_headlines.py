@@ -59,7 +59,7 @@ What Triangle are you focusing on today? Clarity, Creativity, or Accountability?
 Shop the latest at triangleshirt.com
 """
 
-# 3. Generate content with Groq (using current model)
+# 3. Generate content with Groq
 print("Rewriting with AI...")
 groq_response = requests.post(
     "https://api.groq.com/openai/v1/chat/completions",
@@ -68,23 +68,20 @@ groq_response = requests.post(
         "Content-Type": "application/json"
     },
     json={
-        "model": "llama-3.3-70b-versatile",   # ← Updated working model
+        "model": "llama-3.3-70b-versatile",
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.7,
         "max_tokens": 2000
     }
 )
 
-print("Groq Status Code:", groq_response.status_code)
-
 if groq_response.status_code != 200:
     print("❌ Groq API Error:", groq_response.text)
     exit(1)
 
-ai_response = groq_response.json()
-content = ai_response["choices"][0]["message"]["content"]
+content = groq_response.json()["choices"][0]["message"]["content"]
 
-# 4. Update Google Doc
+# 4. Update Google Doc - Safer method for empty or new documents
 print("Updating Google Doc...")
 credentials_info = json.loads(GOOGLE_SERVICE_ACCOUNT_JSON)
 credentials = service_account.Credentials.from_service_account_info(
@@ -93,13 +90,32 @@ credentials = service_account.Credentials.from_service_account_info(
 )
 service = build('docs', 'v1', credentials=credentials)
 
-requests_list = [
-    {'deleteContentRange': {'range': {'startIndex': 1, 'endIndex': 999999}}},
-    {'insertText': {'location': {'index': 1}, 'text': content}}
-]
+# Get current document to know the actual length
+doc = service.documents().get(documentId=GOOGLE_DOC_ID).execute()
+current_length = doc.get('body', {}).get('content', [{}])[-1].get('endIndex', 1)
+
+# Delete everything safely
+delete_request = {
+    'deleteContentRange': {
+        'range': {
+            'startIndex': 1,
+            'endIndex': max(current_length - 1, 1)
+        }
+    }
+}
+
+# Insert new content
+insert_request = {
+    'insertText': {
+        'location': {'index': 1},
+        'text': content
+    }
+}
+
+requests_list = [delete_request, insert_request]
 
 service.documents().batchUpdate(documentId=GOOGLE_DOC_ID, body={'requests': requests_list}).execute()
 
 print("✅ Google Doc updated successfully!")
-print(f"\n📄 View your Daily Triangle Headlines here:")
+print(f"\n📄 Your Daily Triangle Headlines are ready here:")
 print(f"https://docs.google.com/document/d/{GOOGLE_DOC_ID}/edit")
