@@ -21,9 +21,13 @@ news_response = requests.get("https://newsapi.org/v2/top-headlines", params={
     "pageSize": 8,
     "apiKey": NEWSAPI_KEY
 })
+if news_response.status_code != 200:
+    print("❌ NewsAPI Error:", news_response.text)
+    exit(1)
+
 articles = news_response.json()["articles"][:6]
 
-# 2. Build prompt with your Triangle tone
+# 2. Build prompt
 headlines_text = "\n".join([f"- {a['title']} ({a['source']['name']})" for a in articles])
 
 prompt = f"""
@@ -39,15 +43,15 @@ Format exactly like this:
 
 **Daily Triangle Headlines – {datetime.now().strftime('%B %d, %Y')}**
 
-[Short welcoming intro paragraph]
+[Short welcoming intro paragraph for Triangle Emporium readers]
 
 ### Headline 1
-[Rewritten story in Triangle tone - 2-4 sentences]
+[Rewritten 2-4 sentences in Triangle tone]
 
 ### Headline 2
-[Rewritten story...]
+[Rewritten...]
 
-... (do all 6)
+... continue for all 6
 
 At the very end add:
 ---
@@ -55,23 +59,47 @@ What Triangle are you focusing on today? Clarity, Creativity, or Accountability?
 Shop the latest at triangleshirt.com
 """
 
-# 3. Generate content with Groq
+# 3. Generate content with Groq - with better error handling
 print("Rewriting with AI...")
-ai_response = requests.post(
+groq_response = requests.post(
     "https://api.groq.com/openai/v1/chat/completions",
-    headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
-    json={"model": "llama3-70b-8192", "messages": [{"role": "user", "content": prompt}], "temperature": 0.7}
-).json()
+    headers={
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json"
+    },
+    json={
+        "model": "llama3-70b-8192",
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.7,
+        "max_tokens": 1500
+    }
+)
+
+print("Groq Status Code:", groq_response.status_code)
+print("Groq Response:", groq_response.text[:500] + "..." if len(groq_response.text) > 500 else groq_response.text)
+
+if groq_response.status_code != 200:
+    print("❌ Groq API Error - Check your GROQ_API_KEY")
+    exit(1)
+
+ai_response = groq_response.json()
+
+# Safe extraction
+if "choices" not in ai_response or not ai_response["choices"]:
+    print("❌ No choices in Groq response")
+    exit(1)
 
 content = ai_response["choices"][0]["message"]["content"]
 
 # 4. Update Google Doc
 print("Updating Google Doc...")
 credentials_info = json.loads(GOOGLE_SERVICE_ACCOUNT_JSON)
-credentials = service_account.Credentials.from_service_account_info(credentials_info, scopes=['https://www.googleapis.com/auth/documents'])
+credentials = service_account.Credentials.from_service_account_info(
+    credentials_info, 
+    scopes=['https://www.googleapis.com/auth/documents']
+)
 service = build('docs', 'v1', credentials=credentials)
 
-# Clear the document and insert new content
 requests_list = [
     {'deleteContentRange': {'range': {'startIndex': 1, 'endIndex': 999999}}},
     {'insertText': {'location': {'index': 1}, 'text': content}}
@@ -79,11 +107,6 @@ requests_list = [
 
 service.documents().batchUpdate(documentId=GOOGLE_DOC_ID, body={'requests': requests_list}).execute()
 
-print("✅ Google Doc updated successfully")
-
-# 5. Print summary for email
-print("\n" + "="*50)
-print("DAILY TRIANGLE HEADLINES READY")
-print("="*50)
-print(content)
-print("\nGoogle Doc: https://docs.google.com/document/d/" + GOOGLE_DOC_ID)
+print("✅ Google Doc updated successfully!")
+print("\n📄 Your Daily Triangle Headlines are ready here:")
+print(f"https://docs.google.com/document/d/{GOOGLE_DOC_ID}/edit")
