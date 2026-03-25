@@ -13,12 +13,12 @@ GOOGLE_DOC_ID = os.getenv("GOOGLE_DOC_ID")
 
 print("Starting Daily Triangle Emporium Headlines Bot...")
 
-# 1. Fetch headlines
+# 1. Fetch real headlines
 print("Fetching headlines...")
 news_response = requests.get("https://newsapi.org/v2/top-headlines", params={
     "country": "us",
-    "category": "business",
-    "pageSize": 8,
+    "category": "business",        # You can change to "technology", "general", etc.
+    "pageSize": 10,
     "apiKey": NEWSAPI_KEY
 })
 if news_response.status_code != 200:
@@ -27,95 +27,80 @@ if news_response.status_code != 200:
 
 articles = news_response.json()["articles"][:6]
 
-# 2. Build prompt
-headlines_text = "\n".join([f"- {a['title']} ({a['source']['name']})" for a in articles])
+# 2. Improved prompt - forces real headlines + Triangle tone
+headlines_text = "\n".join([f"Original: {a['title']} - {a['description'] or ''} (Source: {a['source']['name']})" for a in articles])
 
 prompt = f"""
-You are the official voice of Triangle Emporium and the Triangle Method.
-Tone: motivational but grounded, structured like the Triangle Method (Clarity → Creativity → Accountability), witty with light triangle metaphors, concise, actionable.
-Always end with a small reflection question or worksheet nudge.
+You are the official voice of Triangle Emporium.
+
+Task: Rewrite these 6 real news headlines into engaging daily content using the Triangle Method tone.
+
+Rules:
+- Stay very close to the original facts and meaning. Do not invent details.
+- Use the Triangle Method structure: Clarity → Creativity → Accountability where natural.
+- Add light triangle metaphors only when they fit naturally.
+- Make it motivational but grounded and actionable.
+- Keep each section concise (2-4 sentences max).
 
 Today's date is {datetime.now().strftime('%B %d, %Y')}.
 
-Create a clean, well-formatted daily post with these 6 headlines.
+Here are the real headlines:
 
-Format exactly like this:
+{headlines_text}
+
+Format the output exactly like this:
 
 **Daily Triangle Headlines – {datetime.now().strftime('%B %d, %Y')}**
 
-[Short welcoming intro paragraph for Triangle Emporium readers]
+[One short, powerful intro sentence welcoming readers to Triangle Emporium]
 
-### Headline 1
-[Rewritten 2-4 sentences in Triangle tone]
+### [Rewritten Headline 1]
+[2-4 sentences in Triangle tone]
 
-### Headline 2
-[Rewritten...]
+### [Rewritten Headline 2]
+[2-4 sentences...]
 
-... continue for all 6
+... do all 6
 
-At the very end add:
 ---
-What Triangle are you focusing on today? Clarity, Creativity, or Accountability?
-Shop the latest at triangleshirt.com
+What are you focusing on today?
+Shop the latest tools for building better systems at triangleshirt.com
 """
 
-# 3. Generate content with Groq
+# 3. Call Groq
 print("Rewriting with AI...")
 groq_response = requests.post(
     "https://api.groq.com/openai/v1/chat/completions",
-    headers={
-        "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type": "application/json"
-    },
+    headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
     json={
         "model": "llama-3.3-70b-versatile",
         "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.7,
-        "max_tokens": 2000
+        "temperature": 0.65,
+        "max_tokens": 2200
     }
 )
 
 if groq_response.status_code != 200:
-    print("❌ Groq API Error:", groq_response.text)
+    print("❌ Groq Error:", groq_response.text)
     exit(1)
 
 content = groq_response.json()["choices"][0]["message"]["content"]
 
-# 4. Update Google Doc - Safer method for empty or new documents
+# 4. Update Google Doc (safe version)
 print("Updating Google Doc...")
 credentials_info = json.loads(GOOGLE_SERVICE_ACCOUNT_JSON)
-credentials = service_account.Credentials.from_service_account_info(
-    credentials_info, 
-    scopes=['https://www.googleapis.com/auth/documents']
-)
+credentials = service_account.Credentials.from_service_account_info(credentials_info, scopes=['https://www.googleapis.com/auth/documents'])
 service = build('docs', 'v1', credentials=credentials)
 
-# Get current document to know the actual length
 doc = service.documents().get(documentId=GOOGLE_DOC_ID).execute()
 current_length = doc.get('body', {}).get('content', [{}])[-1].get('endIndex', 1)
 
-# Delete everything safely
-delete_request = {
-    'deleteContentRange': {
-        'range': {
-            'startIndex': 1,
-            'endIndex': max(current_length - 1, 1)
-        }
-    }
-}
-
-# Insert new content
-insert_request = {
-    'insertText': {
-        'location': {'index': 1},
-        'text': content
-    }
-}
-
-requests_list = [delete_request, insert_request]
+requests_list = [
+    {'deleteContentRange': {'range': {'startIndex': 1, 'endIndex': max(current_length - 1, 1)}}},
+    {'insertText': {'location': {'index': 1}, 'text': content}}
+]
 
 service.documents().batchUpdate(documentId=GOOGLE_DOC_ID, body={'requests': requests_list}).execute()
 
 print("✅ Google Doc updated successfully!")
-print(f"\n📄 Your Daily Triangle Headlines are ready here:")
-print(f"https://docs.google.com/document/d/{GOOGLE_DOC_ID}/edit")
+print(f"📄 Link: https://docs.google.com/document/d/{GOOGLE_DOC_ID}/edit")
